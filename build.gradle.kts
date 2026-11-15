@@ -13,3 +13,10 @@ tasks.register<Copy>("syncApkForGithub") {
   into(layout.projectDirectory.dir("apk"))
 }
 
+tasks.register<Copy>("syncApkToPublic") {
+  dependsOn(":app:assembleDebug")
+  from(layout.projectDirectory.file("app/build/outputs/apk/debug/app-debug.apk"))
+  into(layout.projectDirectory.dir("public"))
+}
+
+
