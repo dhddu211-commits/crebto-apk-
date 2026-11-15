@@ -1,0 +1,299 @@
+{
+  "entities": {
+    "PublicUser": {
+      "title": "PublicUser",
+      "description": "Public creator profile supporting animated video avatars and animated video banners.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "username": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "avatarMediaType": { "type": "string", "enum": ["image", "video"] },
+        "bannerUrl": { "type": "string" },
+        "bannerMediaType": { "type": "string", "enum": ["image", "video"] },
+        "followersCount": { "type": "integer" },
+        "followingCount": { "type": "integer" },
+        "likesCount": { "type": "integer" },
+        "isBanned": { "type": "boolean" },
+        "banReason": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "username",
+        "avatarMediaType",
+        "bannerMediaType",
+        "followersCount",
+        "followingCount",
+        "likesCount",
+        "isBanned",
+        "isVerified",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PrivateUser": {
+      "title": "PrivateUser",
+      "description": "Isolated PII record for authenticated user and admin oversight.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "preferredLanguage": { "type": "string", "enum": ["ar", "en"] },
+        "isBanned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "email", "preferredLanguage", "isBanned", "createdAt", "updatedAt"]
+    },
+    "VideoPost": {
+      "title": "VideoPost",
+      "description": "Short Reel or Long Video post with viral discovery score and moderation state.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatarUrl": { "type": "string" },
+        "authorAvatarType": { "type": "string", "enum": ["image", "video"] },
+        "videoType": { "type": "string", "enum": ["reel", "long"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array" },
+        "category": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "durationSeconds": { "type": "integer" },
+        "likesCount": { "type": "integer" },
+        "commentsCount": { "type": "integer" },
+        "repostsCount": { "type": "integer" },
+        "favoritesCount": { "type": "integer" },
+        "viewsCount": { "type": "integer" },
+        "viralBoostScore": { "type": "integer" },
+        "isBanned": { "type": "boolean" },
+        "banReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "authorAvatarType",
+        "videoType",
+        "title",
+        "category",
+        "mediaUrl",
+        "durationSeconds",
+        "likesCount",
+        "commentsCount",
+        "repostsCount",
+        "favoritesCount",
+        "viewsCount",
+        "viralBoostScore",
+        "isBanned",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VideoComment": {
+      "title": "VideoComment",
+      "description": "Comment on a video or reel.",
+      "type": "object",
+      "properties": {
+        "videoId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatarUrl": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["videoId", "authorId", "authorName", "text", "createdAt"]
+    },
+    "StoryItem": {
+      "title": "StoryItem",
+      "description": "24-hour story supporting video or image media and admin moderation.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatarUrl": { "type": "string" },
+        "authorAvatarType": { "type": "string", "enum": ["image", "video"] },
+        "mediaUrl": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "caption": { "type": "string" },
+        "viewsCount": { "type": "integer" },
+        "isBanned": { "type": "boolean" },
+        "banReason": { "type": "string" },
+        "expiresAtMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "authorAvatarType",
+        "mediaUrl",
+        "mediaType",
+        "viewsCount",
+        "isBanned",
+        "expiresAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VideoInteraction": {
+      "title": "VideoInteraction",
+      "description": "User-scoped interaction record for likes and favorites.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "videoId", "createdAt"]
+    },
+    "RepostRecord": {
+      "title": "RepostRecord",
+      "description": "Publicly visible repost linking a user to a video.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "videoId", "isPublic", "createdAt"]
+    },
+    "FollowRecord": {
+      "title": "FollowRecord",
+      "description": "Follower-following relationship between creators.",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["followerId", "followingId", "createdAt"]
+    },
+    "ChatThread": {
+      "title": "ChatThread",
+      "description": "Direct conversation between two users with admin moderation ban support.",
+      "type": "object",
+      "properties": {
+        "participantIds": { "type": "array" },
+        "participant1Name": { "type": "string" },
+        "participant2Name": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastSenderId": { "type": "string" },
+        "isBanned": { "type": "boolean" },
+        "banReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "participantIds",
+        "participant1Name",
+        "participant2Name",
+        "lastMessage",
+        "lastSenderId",
+        "isBanned",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Message inside a direct chat thread.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string" },
+        "participantIds": { "type": "array" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["chatId", "participantIds", "senderId", "senderName", "text", "createdAt"]
+    },
+    "AdminAlert": {
+      "title": "AdminAlert",
+      "description": "Direct moderation alert sent from admin to a user.",
+      "type": "object",
+      "properties": {
+        "targetUserId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "enum": ["warning", "critical", "ban_notice"] },
+        "sentByEmail": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "targetUserId",
+        "title",
+        "message",
+        "severity",
+        "sentByEmail",
+        "isRead",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users_public/{userId}": {
+      "schema": { "$ref": "#/entities/PublicUser" },
+      "description": "Public creator profiles with animated avatar/banner support"
+    },
+    "/users_private/{userId}": {
+      "schema": { "$ref": "#/entities/PrivateUser" },
+      "description": "Private user PII (email, phone, language preference)"
+    },
+    "/videos/{videoId}": {
+      "schema": { "$ref": "#/entities/VideoPost" },
+      "description": "Reels and long videos feed with viral boost scoring"
+    },
+    "/videos/{videoId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/VideoComment" },
+      "description": "Comments subcollection for videos and reels"
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "#/entities/StoryItem" },
+      "description": "24-hour user stories"
+    },
+    "/likes/{likeId}": {
+      "schema": { "$ref": "#/entities/VideoInteraction" },
+      "description": "User video likes"
+    },
+    "/favorites/{favoriteId}": {
+      "schema": { "$ref": "#/entities/VideoInteraction" },
+      "description": "User video favorites/bookmarks"
+    },
+    "/reposts/{repostId}": {
+      "schema": { "$ref": "#/entities/RepostRecord" },
+      "description": "User video reposts"
+    },
+    "/follows/{followId}": {
+      "schema": { "$ref": "#/entities/FollowRecord" },
+      "description": "Creator follow graph"
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/ChatThread" },
+      "description": "Direct user conversations with admin moderation lock"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Messages within a chat thread"
+    },
+    "/admin_alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/AdminAlert" },
+      "description": "Direct warning alerts sent by admin to violators"
+    }
+  }
+}
