@@ -206,6 +206,10 @@ class FeedViewModel(
     }
   }
 
+  fun deleteVideo(videoId: String) {
+    viewModelScope.launch { feedRepository.deleteVideo(videoId) }
+  }
+
   private companion object {
     const val TAG = "FeedVM"
     const val STOP_TIMEOUT_MILLIS = 5000L

@@ -61,7 +61,7 @@
         "authorName": { "type": "string" },
         "authorAvatarUrl": { "type": "string" },
         "authorAvatarType": { "type": "string", "enum": ["image", "video"] },
-        "videoType": { "type": "string", "enum": ["reel", "long"] },
+        "videoType": { "type": "string", "enum": ["reel", "long", "photo"] },
         "title": { "type": "string" },
         "description": { "type": "string" },
         "tags": { "type": "array" },

@@ -109,6 +109,8 @@ dependencies {
   implementation(libs.coil.compose)
   implementation(libs.coil.gif)
   implementation(libs.androidx.media3.exoplayer)
+  implementation(libs.androidx.media3.exoplayer.hls)
+  implementation(libs.androidx.media3.exoplayer.dash)
   implementation(libs.androidx.media3.ui.compose)
   // implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)

@@ -82,6 +82,7 @@ import com.example.data.model.StoryItem
 import com.example.data.model.UiState
 import com.example.data.model.VideoComment
 import com.example.data.model.VideoPost
+import com.example.data.util.MediaUrlResolver
 import com.example.data.util.ViralBoostRanker
 import com.example.ui.components.AnimatedMediaAvatar
 import com.example.ui.components.CryptoGoldShimmerCard
@@ -296,7 +297,7 @@ fun HomeFeedScreen(
       }
     }
 
-    // Dual Mode Tabs: Reels (TikTok) & Videos (YouTube)
+    // Triple Mode Tabs: Reels (TikTok), Videos (YouTube), Photos
     TabRow(
       selectedTabIndex = selectedTab,
       containerColor = MidnightOnyx,
@@ -320,6 +321,12 @@ fun HomeFeedScreen(
         modifier = Modifier.testTag("tab_videos"),
         text = { Text(strings.tabVideos, fontWeight = FontWeight.Bold) },
       )
+      Tab(
+        selected = selectedTab == 2,
+        onClick = { selectedTab = 2 },
+        modifier = Modifier.testTag("tab_photos"),
+        text = { Text(strings.tabPhotos, fontWeight = FontWeight.Bold) },
+      )
     }
 
     when (videosState) {
@@ -338,49 +345,83 @@ fun HomeFeedScreen(
 
       is UiState.Success -> {
         val allVideos = videosState.data
-        val reels = remember(allVideos) { allVideos.filter { it.videoType == "reel" }.ifEmpty { allVideos } }
-        val longVideos = remember(allVideos) { allVideos.filter { it.videoType == "long" }.ifEmpty { allVideos } }
+        val reels = remember(allVideos) { allVideos.filter { it.videoType == "reel" } }
+        val longVideos = remember(allVideos) { allVideos.filter { it.videoType == "long" } }
+        val photos = remember(allVideos) { allVideos.filter { it.videoType == "photo" } }
+
+        val sharePost: (VideoPost) -> Unit = { post ->
+          val shareIntent =
+            Intent(Intent.ACTION_SEND).apply {
+              type = "text/plain"
+              putExtra(Intent.EXTRA_SUBJECT, post.title)
+              putExtra(Intent.EXTRA_TEXT, "${post.title} - ${post.authorName} on Crypto\n${post.mediaUrl}")
+            }
+          context.startActivity(Intent.createChooser(shareIntent, strings.share))
+        }
 
         if (allVideos.isEmpty()) {
           EmptyFeedCard(onCreateClick = onCreateStoryClick)
         } else if (selectedTab == 0) {
-          ReelsPagerFeed(
-            reels = reels,
-            currentUserId = currentUser?.userId.orEmpty(),
-            likedIds = likedIds,
-            favoriteIds = favoriteIds,
-            repostedIds = repostedIds,
-            followingIds = followingIds,
-            isAdmin = isAdmin,
-            onToggleLike = onToggleLike,
-            onToggleFavorite = onToggleFavorite,
-            onToggleRepost = onToggleRepost,
-            onToggleFollow = onToggleFollow,
-            onOpenComments = {
-              commentsVideoId = it
-              onOpenComments(it)
-            },
-            onShare = { video ->
-              val shareIntent =
-                Intent(Intent.ACTION_SEND).apply {
-                  type = "text/plain"
-                  putExtra(Intent.EXTRA_SUBJECT, video.title)
-                  putExtra(Intent.EXTRA_TEXT, "${video.title} - ${video.authorName} on Crypto\n${video.mediaUrl}")
-                }
-              context.startActivity(Intent.createChooser(shareIntent, strings.share))
-            },
-            onOpenCreatorProfile = onOpenCreatorProfile,
-            onRecordView = onRecordView,
-            onAdminBanVideo = onAdminBanVideo,
-          )
+          if (reels.isEmpty()) {
+            EmptyFeedCard(onCreateClick = onCreateStoryClick)
+          } else {
+            ReelsPagerFeed(
+              reels = reels,
+              currentUserId = currentUser?.userId.orEmpty(),
+              likedIds = likedIds,
+              favoriteIds = favoriteIds,
+              repostedIds = repostedIds,
+              followingIds = followingIds,
+              isAdmin = isAdmin,
+              onToggleLike = onToggleLike,
+              onToggleFavorite = onToggleFavorite,
+              onToggleRepost = onToggleRepost,
+              onToggleFollow = onToggleFollow,
+              onOpenComments = {
+                commentsVideoId = it
+                onOpenComments(it)
+              },
+              onShare = sharePost,
+              onOpenCreatorProfile = onOpenCreatorProfile,
+              onRecordView = onRecordView,
+              onAdminBanVideo = onAdminBanVideo,
+            )
+          }
+        } else if (selectedTab == 1) {
+          if (longVideos.isEmpty()) {
+            EmptyFeedCard(onCreateClick = onCreateStoryClick)
+          } else {
+            LongVideosFeed(
+              videos = longVideos,
+              isAdmin = isAdmin,
+              onOpenVideoDetail = onOpenVideoDetail,
+              onOpenCreatorProfile = onOpenCreatorProfile,
+              onAdminBanVideo = onAdminBanVideo,
+            )
+          }
         } else {
-          LongVideosFeed(
-            videos = longVideos,
-            isAdmin = isAdmin,
-            onOpenVideoDetail = onOpenVideoDetail,
-            onOpenCreatorProfile = onOpenCreatorProfile,
-            onAdminBanVideo = onAdminBanVideo,
-          )
+          if (photos.isEmpty()) {
+            EmptyFeedCard(onCreateClick = onCreateStoryClick)
+          } else {
+            PhotosFeed(
+              photos = photos,
+              likedIds = likedIds,
+              favoriteIds = favoriteIds,
+              repostedIds = repostedIds,
+              isAdmin = isAdmin,
+              onToggleLike = onToggleLike,
+              onToggleFavorite = onToggleFavorite,
+              onToggleRepost = onToggleRepost,
+              onOpenComments = {
+                commentsVideoId = it
+                onOpenComments(it)
+              },
+              onShare = sharePost,
+              onOpenPhotoDetail = onOpenVideoDetail,
+              onOpenCreatorProfile = onOpenCreatorProfile,
+              onAdminBanPhoto = onAdminBanVideo,
+            )
+          }
         }
       }
     }
@@ -672,10 +713,14 @@ private fun LongVideosFeed(
         modifier = Modifier.fillMaxWidth().testTag("video_card_${video.id}"),
       ) {
         Column {
+          val cardThumb =
+            remember(video.id, video.thumbnailUrl, video.mediaUrl) {
+              video.thumbnailUrl.ifBlank { MediaUrlResolver.extractThumbnailUrl(video.mediaUrl) }
+            }
           Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(MidnightOnyx)) {
-            if (video.thumbnailUrl.isNotBlank()) {
+            if (cardThumb.isNotBlank()) {
               AsyncImage(
-                model = video.thumbnailUrl,
+                model = cardThumb,
                 imageLoader = imageLoader,
                 contentDescription = video.title,
                 contentScale = ContentScale.Crop,
@@ -773,6 +818,198 @@ private fun LongVideosFeed(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
               )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun PhotosFeed(
+  photos: List<VideoPost>,
+  likedIds: Set<String>,
+  favoriteIds: Set<String>,
+  repostedIds: Set<String>,
+  isAdmin: Boolean,
+  onToggleLike: (VideoPost) -> Unit,
+  onToggleFavorite: (VideoPost) -> Unit,
+  onToggleRepost: (VideoPost) -> Unit,
+  onOpenComments: (String) -> Unit,
+  onShare: (VideoPost) -> Unit,
+  onOpenPhotoDetail: (VideoPost) -> Unit,
+  onOpenCreatorProfile: (String) -> Unit,
+  onAdminBanPhoto: (VideoPost) -> Unit,
+) {
+  val strings = LocalCryptoStrings.current
+  val imageLoader = rememberCryptoImageLoader()
+
+  LazyColumn(
+    contentPadding = PaddingValues(14.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp),
+    modifier = Modifier.fillMaxSize().testTag("photos_feed_list"),
+  ) {
+    items(photos, key = { it.id }) { photo ->
+      val isLiked = photo.id in likedIds
+      val isFav = photo.id in favoriteIds
+      val isReposted = photo.id in repostedIds
+
+      Surface(
+        onClick = { onOpenPhotoDetail(photo) },
+        color = CharcoalGlass,
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, HairlineGoldBorder),
+        modifier = Modifier.fillMaxWidth().testTag("photo_card_${photo.id}"),
+      ) {
+        Column {
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.weight(1f).clickable { onOpenCreatorProfile(photo.authorId) },
+            ) {
+              AnimatedMediaAvatar(
+                mediaUrl = photo.authorAvatarUrl,
+                mediaType = photo.authorAvatarType,
+                size = 38.dp,
+              )
+              Spacer(modifier = Modifier.width(10.dp))
+              Column {
+                Text(
+                  text = photo.authorName,
+                  style = MaterialTheme.typography.titleSmall,
+                  color = WarmIvory,
+                  fontWeight = FontWeight.Bold,
+                )
+                Text(
+                  text = photo.category,
+                  style = MaterialTheme.typography.labelSmall,
+                  color = ChampagneGold,
+                )
+              }
+            }
+            if (ViralBoostRanker.isFreshViralBoostActive(photo)) {
+              Surface(
+                color = ObsidianVoid.copy(alpha = 0.85f),
+                shape = RoundedCornerShape(50),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MetallicGold),
+              ) {
+                Text(
+                  text = strings.viralBoostBadge,
+                  style = MaterialTheme.typography.labelSmall,
+                  color = ChampagneGold,
+                  modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+              }
+            }
+          }
+
+          Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).background(MidnightOnyx)) {
+            AsyncImage(
+              model = photo.mediaUrl,
+              imageLoader = imageLoader,
+              contentDescription = photo.title,
+              contentScale = ContentScale.Crop,
+              modifier = Modifier.fillMaxSize(),
+            )
+            if (isAdmin) {
+              IconButton(
+                onClick = { onAdminBanPhoto(photo) },
+                modifier =
+                  Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(ObsidianVoid.copy(alpha = 0.75f)),
+              ) {
+                Icon(
+                  imageVector = Icons.Default.Block,
+                  contentDescription = strings.banVideo,
+                  tint = CrimsonBan,
+                  modifier = Modifier.size(20.dp),
+                )
+              }
+            }
+          }
+
+          Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(
+              text = photo.title,
+              style = MaterialTheme.typography.titleMedium,
+              color = WarmIvory,
+              fontWeight = FontWeight.Bold,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            if (photo.description.isNotBlank()) {
+              Spacer(modifier = Modifier.height(4.dp))
+              Text(
+                text = photo.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MutedSand,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              IconButton(onClick = { onToggleLike(photo) }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = strings.like,
+                    tint = if (isLiked) CrimsonBan else WarmIvory,
+                    modifier = Modifier.size(20.dp),
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("${photo.likesCount}", color = WarmIvory, style = MaterialTheme.typography.labelMedium)
+                }
+              }
+              IconButton(onClick = { onOpenComments(photo.id) }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Comment,
+                    contentDescription = strings.comment,
+                    tint = WarmIvory,
+                    modifier = Modifier.size(20.dp),
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("${photo.commentsCount}", color = WarmIvory, style = MaterialTheme.typography.labelMedium)
+                }
+              }
+              IconButton(onClick = { onToggleRepost(photo) }) {
+                Icon(
+                  imageVector = Icons.Default.Repeat,
+                  contentDescription = strings.repost,
+                  tint = if (isReposted) EmeraldLive else WarmIvory,
+                  modifier = Modifier.size(20.dp),
+                )
+              }
+              IconButton(onClick = { onToggleFavorite(photo) }) {
+                Icon(
+                  imageVector = if (isFav) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                  contentDescription = strings.favorite,
+                  tint = if (isFav) MetallicGold else WarmIvory,
+                  modifier = Modifier.size(20.dp),
+                )
+              }
+              IconButton(onClick = { onShare(photo) }) {
+                Icon(
+                  imageVector = Icons.Default.Share,
+                  contentDescription = strings.share,
+                  tint = ChampagneGold,
+                  modifier = Modifier.size(20.dp),
+                )
+              }
             }
           }
         }

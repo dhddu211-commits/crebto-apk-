@@ -79,20 +79,25 @@ object CloudMediaStorage {
     }
 
   fun isHttpUrl(url: String): Boolean {
-    val trimmed = url.trim().lowercase()
-    return trimmed.startsWith("https://") || trimmed.startsWith("http://")
+    val normalized = MediaUrlResolver.normalizeInputUrl(url).lowercase()
+    return normalized.startsWith("https://") || normalized.startsWith("http://")
   }
 
   fun isVideoUri(uriString: String): Boolean {
-    val clean = uriString.substringBefore("?").substringBefore("#").lowercase()
+    val clean = uriString.trim().substringBefore("?").substringBefore("#").lowercase()
+    val lower = uriString.trim().lowercase()
     return clean.endsWith(".mp4") ||
       clean.endsWith(".webm") ||
       clean.endsWith(".mkv") ||
       clean.endsWith(".mov") ||
       clean.endsWith(".m4v") ||
       clean.endsWith(".3gp") ||
-      uriString.lowercase().contains("mime=video") ||
-      uriString.lowercase().contains("%2fvideos%2f") ||
-      uriString.lowercase().contains("%2freels%2f")
+      clean.endsWith(".m3u8") ||
+      clean.endsWith(".mpd") ||
+      lower.contains("mime=video") ||
+      lower.contains("%2fvideos%2f") ||
+      lower.contains("%2freels%2f") ||
+      MediaUrlResolver.extractYouTubeVideoId(uriString) != null ||
+      MediaUrlResolver.extractVimeoVideoId(uriString) != null
   }
 }

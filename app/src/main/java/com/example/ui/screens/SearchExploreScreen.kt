@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Search
@@ -30,21 +32,28 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.data.model.PublicUser
 import com.example.data.model.VideoPost
+import com.example.data.util.MediaUrlResolver
 import com.example.data.util.ViralBoostRanker
 import com.example.ui.components.AnimatedMediaAvatar
+import com.example.ui.components.rememberCryptoImageLoader
 import com.example.ui.strings.LocalCryptoStrings
 import com.example.ui.theme.ChampagneGold
 import com.example.ui.theme.CharcoalGlass
 import com.example.ui.theme.HairlineGoldBorder
 import com.example.ui.theme.MetallicGold
+import com.example.ui.theme.MidnightOnyx
 import com.example.ui.theme.MutedSand
 import com.example.ui.theme.ObsidianVoid
 import com.example.ui.theme.WarmIvory
@@ -61,6 +70,7 @@ fun SearchExploreScreen(
   onOpenCreator: (String) -> Unit,
 ) {
   val strings = LocalCryptoStrings.current
+  val imageLoader = rememberCryptoImageLoader()
   val categories = listOf("ALL", "Crypto", "Tech", "Gaming", "Music", "Comedy", "News")
   val matchingCreators =
     creators.filter {
@@ -170,6 +180,14 @@ fun SearchExploreScreen(
     }
 
     items(videos, key = { it.id }) { video ->
+      val thumb =
+        remember(video.id, video.thumbnailUrl, video.mediaUrl, video.videoType) {
+          when {
+            video.videoType == "photo" -> video.mediaUrl
+            video.thumbnailUrl.isNotBlank() -> video.thumbnailUrl
+            else -> MediaUrlResolver.extractThumbnailUrl(video.mediaUrl)
+          }
+        }
       Surface(
         onClick = { onOpenVideo(video) },
         color = CharcoalGlass,
@@ -181,12 +199,30 @@ fun SearchExploreScreen(
           modifier = Modifier.padding(12.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(
-            imageVector = Icons.Default.PlayCircleOutline,
-            contentDescription = null,
-            tint = ChampagneGold,
-            modifier = Modifier.size(44.dp),
-          )
+          Box(
+            modifier =
+              Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MidnightOnyx),
+            contentAlignment = Alignment.Center,
+          ) {
+            if (thumb.isNotBlank()) {
+              AsyncImage(
+                model = thumb,
+                imageLoader = imageLoader,
+                contentDescription = video.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+              )
+            }
+            Icon(
+              imageVector = if (video.videoType == "photo") Icons.Default.Image else Icons.Default.PlayCircleOutline,
+              contentDescription = null,
+              tint = ChampagneGold,
+              modifier = Modifier.size(28.dp),
+            )
+          }
           Spacer(modifier = Modifier.width(12.dp))
           Column(modifier = Modifier.weight(1f)) {
             Text(

@@ -170,6 +170,12 @@ class CryptoFeedRepository(
     val docId = "vid_${UUID.randomUUID().toString().replace("-", "").take(16)}"
     val docRef = db.collection("videos").document(docId)
     val sanitizedTags = tags.map { it.trim().removePrefix("#") }.filter { it.isNotEmpty() }.take(10)
+    val normalizedMedia = com.example.data.util.MediaUrlResolver.normalizeInputUrl(mediaUrl).take(1500)
+    val resolvedThumb =
+      thumbnailUrl.trim().ifBlank {
+        if (videoType == "photo") normalizedMedia
+        else com.example.data.util.MediaUrlResolver.extractThumbnailUrl(normalizedMedia)
+      }.take(1500)
     val payload =
       mapOf(
         "authorId" to uid,
@@ -181,8 +187,8 @@ class CryptoFeedRepository(
         "description" to description.trim().take(1000),
         "tags" to sanitizedTags,
         "category" to category.trim().ifBlank { "Crypto" }.take(50),
-        "mediaUrl" to mediaUrl.trim().take(1500),
-        "thumbnailUrl" to thumbnailUrl.trim().take(1500),
+        "mediaUrl" to normalizedMedia,
+        "thumbnailUrl" to resolvedThumb,
         "durationSeconds" to durationSeconds.coerceAtLeast(0L),
         "likesCount" to 0L,
         "commentsCount" to 0L,
@@ -201,6 +207,20 @@ class CryptoFeedRepository(
       throw e
     } catch (e: Exception) {
       handleFirestoreError(e, OperationType.CREATE, docRef.path)
+      Result.failure(e)
+    }
+  }
+
+  suspend fun deleteVideo(videoId: String): Result<Unit> {
+    requireUserId()
+    val docRef = db.collection("videos").document(videoId)
+    return try {
+      docRef.delete().await()
+      Result.success(Unit)
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      handleFirestoreError(e, OperationType.DELETE, docRef.path)
       Result.failure(e)
     }
   }

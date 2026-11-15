@@ -115,6 +115,18 @@ data class CryptoStrings(
   val uploadingToCloud: String,
   val cloudUploadReady: String,
   val httpsUrlRequiredHint: String,
+  val postTypePhoto: String,
+  val tabPhotos: String,
+  val myPosts: String,
+  val myPhotos: String,
+  val postsCountLabel: String,
+  val videoPlaybackError: String,
+  val retryLabel: String,
+  val openLinkLabel: String,
+  val emptyProfilePosts: String,
+  val publishFirstPost: String,
+  val deletePost: String,
+  val confirmDeletePost: String,
 )
 
 val ArabicStrings =
@@ -229,6 +241,18 @@ val ArabicStrings =
     uploadingToCloud = "جاري الرفع إلى السحابة...",
     cloudUploadReady = "تم الرفع أونلاين بنجاح (HTTPS)",
     httpsUrlRequiredHint = "يرجى اختيار ملف لرفعه على السحابة أو لصق رابط مباشر يبدأ بـ https:// ليظهر لجميع المستخدمين.",
+    postTypePhoto = "صورة",
+    tabPhotos = "صور",
+    myPosts = "المنشورات",
+    myPhotos = "الصور",
+    postsCountLabel = "منشور",
+    videoPlaybackError = "تعذر تشغيل الرابط مباشرة داخل المشغل",
+    retryLabel = "إعادة المحاولة",
+    openLinkLabel = "فتح الرابط",
+    emptyProfilePosts = "لا توجد منشورات أو فيديوهات أو صور في هذا الحساب بعد",
+    publishFirstPost = "انشر أول فيديو أو صورة",
+    deletePost = "حذف المنشور",
+    confirmDeletePost = "هل تريد حذف هذا المنشور نهائياً؟",
   )
 
 val EnglishStrings =
@@ -343,6 +367,18 @@ val EnglishStrings =
     uploadingToCloud = "Uploading to Cloud...",
     cloudUploadReady = "Hosted Online (HTTPS Ready)",
     httpsUrlRequiredHint = "Please pick a file to upload to the cloud or paste a public https:// URL so all online users can view it.",
+    postTypePhoto = "Photo",
+    tabPhotos = "Photos",
+    myPosts = "Posts",
+    myPhotos = "Photos",
+    postsCountLabel = "Posts",
+    videoPlaybackError = "Unable to stream this link directly in player",
+    retryLabel = "Retry",
+    openLinkLabel = "Open Link",
+    emptyProfilePosts = "No published videos or photos yet",
+    publishFirstPost = "Publish First Post",
+    deletePost = "Delete Post",
+    confirmDeletePost = "Delete this post permanently?",
   )
 
 fun stringsFor(language: AppLanguage): CryptoStrings =

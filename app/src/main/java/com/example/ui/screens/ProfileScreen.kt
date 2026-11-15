@@ -5,10 +5,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +27,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Verified
@@ -41,9 +44,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
@@ -60,18 +63,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.data.model.PrivateUser
 import com.example.data.model.PublicUser
 import com.example.data.model.VideoPost
 import com.example.data.util.CloudMediaStorage
+import com.example.data.util.MediaUrlResolver
 import com.example.ui.components.AnimatedMediaAvatar
 import com.example.ui.components.AnimatedMediaBanner
+import com.example.ui.components.rememberCryptoImageLoader
 import com.example.ui.strings.LocalCryptoStrings
 import com.example.ui.theme.ChampagneGold
 import com.example.ui.theme.CharcoalGlass
@@ -97,6 +104,8 @@ fun ProfileScreen(
   onToggleFollow: () -> Unit,
   onMessageUser: () -> Unit,
   onOpenVideo: (VideoPost) -> Unit,
+  onDeleteVideo: ((VideoPost) -> Unit)? = null,
+  onCreateClick: (() -> Unit)? = null,
   onSaveProfile: (
     displayName: String,
     username: String,
@@ -116,14 +125,22 @@ fun ProfileScreen(
   }
 
   val strings = LocalCryptoStrings.current
+  val imageLoader = rememberCryptoImageLoader()
   var selectedTab by remember { mutableIntStateOf(0) }
   var showEditDialog by remember { mutableStateOf(false) }
+  var pendingDeletePost by remember { mutableStateOf<VideoPost?>(null) }
 
-  val userLongVideos = remember(allVideos, profileUser.userId) {
-    allVideos.filter { it.authorId == profileUser.userId && it.videoType == "long" }
+  val userAllPosts = remember(allVideos, profileUser.userId) {
+    allVideos.filter { it.authorId == profileUser.userId }
   }
-  val userReels = remember(allVideos, profileUser.userId) {
-    allVideos.filter { it.authorId == profileUser.userId && it.videoType == "reel" }
+  val userLongVideos = remember(userAllPosts) {
+    userAllPosts.filter { it.videoType == "long" }
+  }
+  val userReels = remember(userAllPosts) {
+    userAllPosts.filter { it.videoType == "reel" }
+  }
+  val userPhotos = remember(userAllPosts) {
+    userAllPosts.filter { it.videoType == "photo" }
   }
   val userReposts = remember(allVideos, repostedIds) {
     allVideos.filter { it.id in repostedIds }
@@ -134,9 +151,11 @@ fun ProfileScreen(
 
   val activeList =
     when (selectedTab) {
-      0 -> userLongVideos
-      1 -> userReels
-      2 -> userReposts
+      0 -> userAllPosts
+      1 -> userLongVideos
+      2 -> userReels
+      3 -> userPhotos
+      4 -> userReposts
       else -> userFavorites
     }
 
@@ -300,6 +319,7 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
           ) {
+            StatBlock(value = userAllPosts.size.toString(), label = strings.postsCountLabel)
             StatBlock(value = profileUser.followersCount.toString(), label = strings.followersLabel)
             StatBlock(value = profileUser.followingCount.toString(), label = strings.followingLabel)
             StatBlock(value = profileUser.likesCount.toString(), label = strings.likesTotalLabel)
@@ -311,15 +331,28 @@ fun ProfileScreen(
 
       val tabs =
         if (isOwnProfile) {
-          listOf(strings.myVideos, strings.myReels, strings.myReposts, strings.myFavorites)
+          listOf(
+            "${strings.myPosts} (${userAllPosts.size})",
+            "${strings.myVideos} (${userLongVideos.size})",
+            "${strings.myReels} (${userReels.size})",
+            "${strings.myPhotos} (${userPhotos.size})",
+            strings.myReposts,
+            strings.myFavorites,
+          )
         } else {
-          listOf(strings.myVideos, strings.myReels)
+          listOf(
+            "${strings.myPosts} (${userAllPosts.size})",
+            "${strings.myVideos} (${userLongVideos.size})",
+            "${strings.myReels} (${userReels.size})",
+            "${strings.myPhotos} (${userPhotos.size})",
+          )
         }
 
-      TabRow(
+      ScrollableTabRow(
         selectedTabIndex = selectedTab.coerceAtMost(tabs.lastIndex),
         containerColor = MidnightOnyx,
         contentColor = ChampagneGold,
+        edgePadding = 12.dp,
         indicator = { tabPositions ->
           TabRowDefaults.SecondaryIndicator(
             modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.coerceAtMost(tabs.lastIndex)]),
@@ -331,36 +364,191 @@ fun ProfileScreen(
           Tab(
             selected = selectedTab == idx,
             onClick = { selectedTab = idx },
+            modifier = Modifier.testTag("profile_tab_$idx"),
             text = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
           )
         }
       }
     }
 
-    items(activeList, key = { "${selectedTab}_${it.id}" }) { video ->
-      Surface(
-        onClick = { onOpenVideo(video) },
-        color = CharcoalGlass,
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, HairlineGoldBorder),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-      ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Default.PlayCircleOutline, null, tint = ChampagneGold, modifier = Modifier.size(38.dp))
-          Spacer(modifier = Modifier.width(12.dp))
-          Column(modifier = Modifier.weight(1f)) {
-            Text(video.title, color = WarmIvory, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            Text(
-              text = "${video.viewsCount} ${strings.viewsLabel} • ${video.likesCount} ❤",
-              color = MutedSand,
-              style = MaterialTheme.typography.bodyMedium,
+    if (activeList.isEmpty()) {
+      item {
+        Surface(
+          color = CharcoalGlass,
+          shape = RoundedCornerShape(18.dp),
+          border = androidx.compose.foundation.BorderStroke(1.dp, HairlineGoldBorder),
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+        ) {
+          Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(24.dp),
+          ) {
+            Icon(
+              imageVector = Icons.Default.AddPhotoAlternate,
+              contentDescription = null,
+              tint = MetallicGold,
+              modifier = Modifier.size(40.dp),
             )
+            Text(
+              text = strings.emptyProfilePosts,
+              style = MaterialTheme.typography.bodyMedium,
+              color = MutedSand,
+              textAlign = TextAlign.Center,
+            )
+            if (isOwnProfile && onCreateClick != null) {
+              Button(
+                onClick = onCreateClick,
+                colors = ButtonDefaults.buttonColors(containerColor = MetallicGold, contentColor = ObsidianVoid),
+              ) {
+                Text(strings.publishFirstPost, fontWeight = FontWeight.Bold)
+              }
+            }
+          }
+        }
+      }
+    } else {
+      items(activeList, key = { "${selectedTab}_${it.id}" }) { post ->
+        val previewThumb =
+          remember(post.id, post.thumbnailUrl, post.mediaUrl, post.videoType) {
+            when {
+              post.videoType == "photo" -> post.mediaUrl
+              post.thumbnailUrl.isNotBlank() -> post.thumbnailUrl
+              else -> MediaUrlResolver.extractThumbnailUrl(post.mediaUrl)
+            }
+          }
+        val typeLabel =
+          when (post.videoType) {
+            "photo" -> strings.postTypePhoto
+            "long" -> strings.postTypeLong
+            else -> strings.postTypeReel
+          }
+
+        Surface(
+          onClick = { onOpenVideo(post) },
+          color = CharcoalGlass,
+          shape = RoundedCornerShape(16.dp),
+          border = androidx.compose.foundation.BorderStroke(1.dp, HairlineGoldBorder),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 6.dp)
+              .testTag("profile_post_${post.id}"),
+        ) {
+          Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+              modifier =
+                Modifier
+                  .width(96.dp)
+                  .height(72.dp)
+                  .clip(RoundedCornerShape(12.dp))
+                  .background(MidnightOnyx)
+                  .border(1.dp, HairlineGoldBorder, RoundedCornerShape(12.dp)),
+              contentAlignment = Alignment.Center,
+            ) {
+              if (previewThumb.isNotBlank()) {
+                AsyncImage(
+                  model = previewThumb,
+                  imageLoader = imageLoader,
+                  contentDescription = post.title,
+                  contentScale = ContentScale.Crop,
+                  modifier = Modifier.fillMaxSize(),
+                )
+              }
+              Box(
+                modifier =
+                  Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(ObsidianVoid.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center,
+              ) {
+                Icon(
+                  imageVector =
+                    if (post.videoType == "photo") Icons.Default.Image
+                    else Icons.Default.PlayCircleOutline,
+                  contentDescription = typeLabel,
+                  tint = ChampagneGold,
+                  modifier = Modifier.size(18.dp),
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = post.title,
+                color = WarmIvory,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+              Spacer(modifier = Modifier.height(3.dp))
+              Surface(
+                color = MetallicGold.copy(alpha = 0.16f),
+                shape = RoundedCornerShape(50),
+              ) {
+                Text(
+                  text = typeLabel,
+                  color = ChampagneGold,
+                  style = MaterialTheme.typography.labelSmall,
+                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+              }
+              Spacer(modifier = Modifier.height(4.dp))
+              Text(
+                text = "${post.viewsCount} ${strings.viewsLabel} • ${post.likesCount} ❤ • ${post.commentsCount} 💬",
+                color = MutedSand,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+              )
+            }
+
+            if (isOwnProfile && post.authorId == profileUser.userId && onDeleteVideo != null && selectedTab < 4) {
+              IconButton(
+                onClick = { pendingDeletePost = post },
+                modifier = Modifier.testTag("delete_post_${post.id}"),
+              ) {
+                Icon(
+                  imageVector = Icons.Default.DeleteOutline,
+                  contentDescription = strings.deletePost,
+                  tint = CrimsonBan,
+                )
+              }
+            }
           }
         }
       }
     }
 
     item { Spacer(modifier = Modifier.height(24.dp)) }
+  }
+
+  pendingDeletePost?.let { postToDelete ->
+    AlertDialog(
+      onDismissRequest = { pendingDeletePost = null },
+      containerColor = MidnightOnyx,
+      titleContentColor = ChampagneGold,
+      title = { Text(strings.deletePost, fontWeight = FontWeight.Bold) },
+      text = { Text("${strings.confirmDeletePost}\n\"${postToDelete.title}\"", color = WarmIvory) },
+      confirmButton = {
+        Button(
+          onClick = {
+            onDeleteVideo?.invoke(postToDelete)
+            pendingDeletePost = null
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = CrimsonBan, contentColor = WarmIvory),
+        ) {
+          Text(strings.confirm, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { pendingDeletePost = null }) {
+          Text(strings.cancel, color = MutedSand)
+        }
+      },
+    )
   }
 
   if (showEditDialog && isOwnProfile) {

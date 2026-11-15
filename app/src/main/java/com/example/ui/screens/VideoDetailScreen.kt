@@ -108,6 +108,7 @@ fun VideoDetailScreen(
         isActive = true,
         contentScale = ContentScale.Fit,
         fallbackImageUrl = video.thumbnailUrl,
+        isPhoto = video.videoType == "photo",
         modifier = Modifier.fillMaxSize(),
       )
       IconButton(

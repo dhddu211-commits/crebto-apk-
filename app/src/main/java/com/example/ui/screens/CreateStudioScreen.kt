@@ -8,6 +8,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.data.model.PublicUser
 import com.example.data.util.CloudMediaStorage
+import com.example.data.util.MediaUrlResolver
 import com.example.ui.components.CryptoVaultLoader
 import com.example.ui.components.CryptoVideoPlayer
 import com.example.ui.components.rememberCryptoImageLoader
@@ -67,6 +70,7 @@ import com.example.ui.theme.ObsidianVoid
 import com.example.ui.theme.WarmIvory
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CreateStudioScreen(
   currentUser: PublicUser?,
@@ -95,7 +99,7 @@ fun CreateStudioScreen(
   val scope = rememberCoroutineScope()
   val imageLoader = rememberCryptoImageLoader()
 
-  var mode by remember { mutableStateOf("reel") } // "reel", "long", "story"
+  var mode by remember { mutableStateOf("reel") } // "reel", "long", "photo", "story"
   var mediaUrl by remember { mutableStateOf("") }
   var pickedIsVideo by remember { mutableStateOf(true) }
   var title by remember { mutableStateOf("") }
@@ -120,6 +124,7 @@ fun CreateStudioScreen(
           val folder =
             when (mode) {
               "story" -> "stories"
+              "photo" -> "photos"
               "long" -> "videos"
               else -> "reels"
             }
@@ -131,7 +136,7 @@ fun CreateStudioScreen(
             .onSuccess { uploaded ->
               isUploading = false
               mediaUrl = uploaded.downloadUrl
-              pickedIsVideo = uploaded.isVideo
+              pickedIsVideo = if (mode == "photo") false else uploaded.isVideo
               isError = false
               statusMessage = strings.cloudUploadReady
             }
@@ -176,13 +181,30 @@ fun CreateStudioScreen(
       }
     }
 
-    // Mode Selector
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-      listOf("reel" to strings.postTypeReel, "long" to strings.postTypeLong, "story" to strings.postTypeStory)
+    // Mode Selector (Reels, Long Video, Photo, 24h Story)
+    FlowRow(
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
+      modifier = Modifier.fillMaxWidth(),
+    ) {
+      listOf(
+        "reel" to strings.postTypeReel,
+        "long" to strings.postTypeLong,
+        "photo" to strings.postTypePhoto,
+        "story" to strings.postTypeStory,
+      )
         .forEach { (key, label) ->
           FilterChip(
             selected = mode == key,
-            onClick = { mode = key },
+            onClick = {
+              mode = key
+              pickedIsVideo =
+                when (key) {
+                  "photo" -> false
+                  "story" -> CloudMediaStorage.isVideoUri(mediaUrl)
+                  else -> !MediaUrlResolver.isLikelyImageUrl(mediaUrl)
+                }
+            },
             label = { Text(label) },
             colors =
               FilterChipDefaults.filterChipColors(
@@ -191,6 +213,7 @@ fun CreateStudioScreen(
                 containerColor = CharcoalGlass,
                 labelColor = WarmIvory,
               ),
+            modifier = Modifier.testTag("mode_chip_$key"),
           )
         }
     }
@@ -199,10 +222,10 @@ fun CreateStudioScreen(
     OutlinedButton(
       onClick = {
         val request =
-          if (mode == "story") {
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-          } else {
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+          when (mode) {
+            "photo" -> PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            "story" -> PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+            else -> PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
           }
         mediaPicker.launch(request)
       },
@@ -235,7 +258,12 @@ fun CreateStudioScreen(
       value = mediaUrl,
       onValueChange = {
         mediaUrl = it
-        pickedIsVideo = CloudMediaStorage.isVideoUri(it) || mode != "story"
+        pickedIsVideo =
+          when (mode) {
+            "photo" -> false
+            "story" -> CloudMediaStorage.isVideoUri(it)
+            else -> !MediaUrlResolver.isLikelyImageUrl(it)
+          }
       },
       label = { Text(strings.orPasteVideoUrl) },
       singleLine = true,
@@ -243,6 +271,7 @@ fun CreateStudioScreen(
     )
 
     if (mediaUrl.isNotBlank()) {
+      val previewUrl = remember(mediaUrl) { MediaUrlResolver.normalizeInputUrl(mediaUrl) }
       Box(
         modifier =
           Modifier
@@ -251,9 +280,9 @@ fun CreateStudioScreen(
             .clip(RoundedCornerShape(18.dp))
             .border(1.dp, HairlineGoldBorder, RoundedCornerShape(18.dp))
       ) {
-        if (pickedIsVideo) {
+        if (pickedIsVideo && mode != "photo") {
           CryptoVideoPlayer(
-            mediaUrl = mediaUrl,
+            mediaUrl = previewUrl,
             isActive = true,
             mutedByDefault = true,
             contentScale = ContentScale.Crop,
@@ -261,7 +290,7 @@ fun CreateStudioScreen(
           )
         } else {
           AsyncImage(
-            model = mediaUrl,
+            model = previewUrl,
             imageLoader = imageLoader,
             contentDescription = null,
             contentScale = ContentScale.Crop,
@@ -322,12 +351,13 @@ fun CreateStudioScreen(
 
     Button(
       onClick = {
-        if (mediaUrl.isBlank() || title.isBlank()) {
+        val cleanUrl = MediaUrlResolver.normalizeInputUrl(mediaUrl)
+        if (cleanUrl.isBlank() || title.isBlank()) {
           isError = true
           statusMessage = "${strings.videoTitleHint} & ${strings.pickFromMobile}"
           return@Button
         }
-        if (!CloudMediaStorage.isHttpUrl(mediaUrl)) {
+        if (!CloudMediaStorage.isHttpUrl(cleanUrl)) {
           isError = true
           statusMessage = strings.httpsUrlRequiredHint
           return@Button
@@ -337,11 +367,13 @@ fun CreateStudioScreen(
         isError = false
         if (mode == "story") {
           onPublishStory(
-            mediaUrl,
+            cleanUrl,
             if (pickedIsVideo) "video" else "image",
             title,
             {
               isPublishing = false
+              mediaUrl = ""
+              title = ""
               statusMessage = strings.publishSuccess
               onPublishedNavigateHome()
             },
@@ -353,16 +385,25 @@ fun CreateStudioScreen(
           )
         } else {
           val tags = tagsText.split(",", " ").map { it.trim() }.filter { it.isNotEmpty() }
+          val duration =
+            when (mode) {
+              "photo" -> 0L
+              "reel" -> 30L
+              else -> 180L
+            }
           onPublishVideo(
             mode,
             title,
             description,
             tags,
             category,
-            mediaUrl,
-            if (mode == "reel") 30L else 180L,
+            cleanUrl,
+            duration,
             {
               isPublishing = false
+              mediaUrl = ""
+              title = ""
+              description = ""
               statusMessage = strings.publishSuccess
               onPublishedNavigateHome()
             },

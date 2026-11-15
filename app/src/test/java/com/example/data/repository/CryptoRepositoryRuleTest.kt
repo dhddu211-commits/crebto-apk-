@@ -85,6 +85,51 @@ class CryptoRepositoryRuleTest : FirestoreEmulatorTestBase() {
         feedRepo.observePublicVideos().first { list -> list.any { it.id == videoId } }
       }
     assertTrue(videos.any { it.id == videoId && it.title == "Viral Crypto Launch" })
+
+    val photoRes =
+      withTimeout(DEFAULT_TIMEOUT_MS) {
+        feedRepo.publishVideo(
+          author = profile ?: PublicUser(userId = uid, displayName = "Crypto King"),
+          videoType = "photo",
+          title = "Luxury Gold Shot",
+          description = "Photo upload",
+          tags = listOf("photo"),
+          category = "Crypto",
+          mediaUrl = "https://example.com/gold.jpg",
+          thumbnailUrl = "",
+          durationSeconds = 0L,
+        )
+      }
+    val photoId = photoRes.getOrNull() ?: throw AssertionError("photoRes failed", photoRes.exceptionOrNull())
+
+    val ytRes =
+      withTimeout(DEFAULT_TIMEOUT_MS) {
+        feedRepo.publishVideo(
+          author = profile ?: PublicUser(userId = uid, displayName = "Crypto King"),
+          videoType = "long",
+          title = "YouTube Video Link",
+          description = "Link test",
+          tags = listOf("yt"),
+          category = "Tech",
+          mediaUrl = "https://youtu.be/dQw4w9WgXcQ",
+          thumbnailUrl = "",
+          durationSeconds = 180L,
+        )
+      }
+    val ytId = ytRes.getOrNull() ?: throw AssertionError("ytRes failed", ytRes.exceptionOrNull())
+
+    val updatedFeed =
+      withTimeout(FLOW_TIMEOUT_MS) {
+        feedRepo.observePublicVideos().first { list ->
+          list.any { it.id == photoId } && list.any { it.id == ytId }
+        }
+      }
+    val publishedPhoto = updatedFeed.first { it.id == photoId }
+    assertEquals("photo", publishedPhoto.videoType)
+    assertEquals("https://example.com/gold.jpg", publishedPhoto.thumbnailUrl)
+
+    val publishedYt = updatedFeed.first { it.id == ytId }
+    assertEquals("https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg", publishedYt.thumbnailUrl)
   }
 
   @Test

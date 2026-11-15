@@ -561,6 +561,8 @@ private fun AuthenticatedCryptoShell(
                   onToggleFollow = {},
                   onMessageUser = {},
                   onOpenVideo = { detailVideo = it },
+                  onDeleteVideo = { feedViewModel.deleteVideo(it.id) },
+                  onCreateClick = { activeTab = MainTab.CREATE },
                   onSaveProfile = { dn, un, bio, avUrl, avType, bnUrl, bnType, em, ph ->
                     socialViewModel.updateProfile(dn, un, bio, avUrl, avType, bnUrl, bnType) {}
                     socialViewModel.updateContactInfo(em, ph, language.code) {}

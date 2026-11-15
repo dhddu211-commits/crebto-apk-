@@ -194,6 +194,23 @@ test("Videos & Stories: non-admin cannot ban, verified Admin can ban video and s
   }).firestore();
 
   await assertSucceeds(aliceDb.collection("videos").doc("vid_1").set(videoPayload(ALICE_UID)));
+  await assertSucceeds(
+    aliceDb.collection("videos").doc("photo_1").set(
+      videoPayload(ALICE_UID, {
+        videoType: "photo",
+        title: "Crypto Art Photo",
+        mediaUrl: "https://example.com/photo.jpg",
+        durationSeconds: 0,
+      })
+    )
+  );
+  await assertFails(
+    aliceDb.collection("videos").doc("bad_type").set(
+      videoPayload(ALICE_UID, {
+        videoType: "invalid_type",
+      })
+    )
+  );
 
   // Client aligned query passes
   await assertSucceeds(bobDb.collection("videos").where("isBanned", "==", false).get());
